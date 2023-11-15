@@ -1,7 +1,7 @@
 const express = require('express')
 const Result = require('../models/Result')
-const { login } = require('../services/user')
-const { md5 } = require('../utils')
+const { login, findUser } = require('../services/user')
+const { md5, decoded } = require('../utils')
 const { PWD_SALT, PRIVATE_KEY, JWT_EXPIRED } = require('../utils/constant')
 const { body, validationResult } = require('express-validator')
 const boom = require('boom')
@@ -38,8 +38,22 @@ router.post('/login',
         }
     })
 
-router.get('/info', function (req, res, next) {
-    res.json('user info...')
+router.get('/info', function (req, res) {
+    const decode = decoded(req)
+    if (decode && decode.username) {
+        findUser(decode.username).then(user => {
+            console.log(user)
+            if (user) {
+                // 将数据库查询到的 role 作为数组传递给前端，进行路由权限校验
+                user.roles = [user.role]
+                new Result(user, '用户信息查询成功').success(res)
+            } else {
+                new Result('用户信息查询失败').fail(res)
+            }
+        })
+    } else {
+        new Result('用户信息查询失败').fail(res)
+    }
 })
 
 module.exports = router
